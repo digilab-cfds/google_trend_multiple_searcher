@@ -1,3 +1,6 @@
+"""
+# Libraries
+"""
 # docs : https://github.com/GeneralMills/pytrends
 from pytrends.request import TrendReq
 from math import ceil
@@ -5,47 +8,86 @@ import numpy as np
 import time
 import operator
 
+"""
+# Methods
+-------
+1. Individual Search : Search and suggestions
+2. Multiple Search : Search and sort
+"""
+def individualSearch(keywords, timeframe):
+    count = 1
+    with open('analysis.csv', 'w') as file:
+        print("keyword", "maxTimestamp", "suggestions", "relatedTopics", "relatedQuery", sep=";", file=file)
+
+        for keyword in keywords:
+            print("Progress :", count, "/", len(keywords), end = "\r")
+            pytrends.build_payload([keyword], cat=0, timeframe=timeframe)
+
+            try:
+                maxTimestamp = pytrends.interest_over_time()[keyword].idxmax()
+                suggestions = pytrends.suggestions(keyword)
+                keys = ['title', 'type']
+                suggestions = [[suggestion[key] for key in keys] for suggestion in suggestions]
+                relatedQuery = pytrends.related_queries()
+                relatedTopics = pytrends.related_topics()
+            except (KeyError):
+                maxTimestamp = "NaN"
+                suggestions = "NaN"
+
+            try:
+                print(keyword, maxTimestamp, suggestions, relatedTopics[keyword]['rising']['topic_title'].tolist(), relatedQuery[keyword]['rising']['query'].tolist(), sep=';', file=file)
+            except (KeyError, TypeError):
+                print(keyword, maxTimestamp, suggestions, "NaN", "NaN", sep=';', file=file)
+            count += 1
+
+def multipleSearch(keywords, timeframe):
+    matrix = {keyword: 0.0 for keyword in keywords}
+    iterations = ceil(len(keywords)/4)
+
+    for i in range(iterations):
+        print("Progress :", i + 1, "/", iterations)
+
+        try:
+            currentKeywords = (keywords[i * 4 : i * 4 + 4])
+        except IndexError:
+            currentKeywords = (keywords[i * 4 :])
+
+        if(i>0):
+            currentKeywords.insert(0, max)
+            
+        print(currentKeywords)
+        pytrends.build_payload(currentKeywords, timeframe=timeframe)
+
+        for keyword in currentKeywords:
+            maxTimestamp = pytrends.interest_over_time()[keyword].idxmax()
+            maxValue = pytrends.interest_over_time()[keyword].max()
+            
+            matrix[keyword] = maxValue
+
+            if (maxValue == 100):
+                if (i > 0):
+                    keys = keywords[: i * 4]
+                    keys.remove(max)
+
+                    for key in keys:
+                        matrix[key] *= (matrix[max] / 100)
+                max = keyword
+    
+    with open('analysis.csv', 'w') as file:
+        for key in matrix.keys():
+            print(key, ";", matrix[key], file=file)
+
+"""
+# Main body
+"""
 t = time.time()
 
 pytrends = TrendReq(hl='en-US', tz=420) # Connect to Google
 
-keywords = ["Paul Rudd", "Emma Watson", "Christopher Nolan", "Philip Seymour Hoffman", "Johnny Depp", "Derek Jeter", "Patricia Arquette", "Jim Carrey","Chris Brown","Franco Nero","Mark Harmon","Jim Parsons","John Travolta","Bill Murray","Jason Biggs","Courteney Cox","50 Cent","Howard Stern","Julia Louis-Dreyfus","Bruce Springsteen","Tom Cruise","Jeremy Renner","Kevin Garnett","Shah Rukh Khan","Clint Eastwood","Antonio Banderas","Golshifteh Farahani","Morgan Freeman","Danny Trejo","Angelina Jolie"]
+keywords = ["Mahfud MD","Airlangga Hartarto","Muhadjir Effendy","Luhut Binsar Panjaitan","Prabowo Subianto","Pratikno","Tito Karnavian","Retno Marsudi","Fachrul Razi","Yasonna Laoly","Sri Mulyani Indrawati","Nadiem Makarim","Terawan Agus Putranto","Juliari Batubara","Ida Fauziah","Agus Gumiwang Kartasasmita","Agus Suparmanto","Arifin Tasrif","Basuki Hadimuljono","Budi Karya","Johnny G. Plate","Syahrul Yasin Limpo","Siti Nurbaya Bakar","Edhy Prabowo","Abdul Halim Iskandar","Sofyan Djalil","Suharso Monoarfa","Tjahjo Kumolo","Erick Thohir","Teten Masduki","Wishnutama","Gusti Ayu Darmavati","Bambang Brodjonegoro","Zainudin Amali"]
 
-iterations = ceil(len(keywords)/5) + 2
-dataPointer = 4
+timeframe = '2019-10-21 2019-10-24'
 
-matrix = {keyword : 0.0 for keyword in keywords}
+individualSearch(keywords, timeframe)
 
-for i in range(0, iterations):
-    if(i==0):
-        max = None
-        currentKeywords = keywords[dataPointer*i : dataPointer*i + 4]
-        pytrends.build_payload(currentKeywords, cat=0, timeframe='today 5-y')
-        maxNeighbours = currentKeywords
-    else:
-        currentKeywords = keywords[dataPointer*i : dataPointer*i + 4]
-        currentKeywords.append(max)
-        pytrends.build_payload(currentKeywords, cat=0, timeframe='today 5-y')
-
-    for keyword in currentKeywords:
-        maxTimestamp = pytrends.interest_over_time()[keyword].idxmax()
-        maxValue = pytrends.interest_over_time()[keyword].max()
-        suggestions = pytrends.suggestions(keyword)
-        
-        matrix[keyword] = maxValue
-
-        if(maxValue == 100 and keyword != max):
-            max = keyword
-
-    if max != currentKeywords[-1]:
-        if(i==0):
-            pass
-        else:
-            maxNeighbours.remove(currentKeywords[-1])
-        for keyword in maxNeighbours:
-            matrix[keyword] *= matrix[currentKeywords[-1]]/100
-        maxNeighbours = currentKeywords[:-1]
-
-print(sorted(matrix.items, key=operator.itemgetter(1)))
-
-print("Elapsed Time :", time.time() - t, end = " sec\n")
+print("Elapsed Time :", time.time() - t, "sec")
