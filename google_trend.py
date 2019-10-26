@@ -14,14 +14,14 @@ import operator
 1. Individual Search : Search and suggestions
 2. Multiple Search : Search and sort
 """
-def individualSearch(keywords, timeframe):
+def individualSearch(keywords, timeframe, geo):
     count = 1
     with open('analysis.csv', 'w') as file:
         print("keyword", "maxTimestamp", "suggestions", "relatedTopics", "relatedQuery", sep=";", file=file)
 
         for keyword in keywords:
             print("Progress :", count, "/", len(keywords), end = "\r")
-            pytrends.build_payload([keyword], cat=0, timeframe=timeframe)
+            pytrends.build_payload([keyword], cat=0, timeframe=timeframe, geo = geo)
 
             try:
                 maxTimestamp = pytrends.interest_over_time()[keyword].idxmax()
@@ -40,7 +40,7 @@ def individualSearch(keywords, timeframe):
                 print(keyword, maxTimestamp, suggestions, "NaN", "NaN", sep=';', file=file)
             count += 1
 
-def multipleSearch(keywords, timeframe):
+def multipleSearch(keywords, timeframe, geo):
     matrix = {keyword: 0.0 for keyword in keywords}
     iterations = ceil(len(keywords)/4)
 
@@ -56,7 +56,7 @@ def multipleSearch(keywords, timeframe):
             currentKeywords.insert(0, max)
             
         print(currentKeywords)
-        pytrends.build_payload(currentKeywords, timeframe=timeframe)
+        pytrends.build_payload(currentKeywords, timeframe=timeframe, geo = geo)
 
         for keyword in currentKeywords:
             maxTimestamp = pytrends.interest_over_time()[keyword].idxmax()
@@ -86,8 +86,10 @@ pytrends = TrendReq(hl='en-US', tz=420) # Connect to Google
 
 keywords = ["Mahfud MD","Airlangga Hartarto","Muhadjir Effendy","Luhut Binsar Panjaitan","Prabowo Subianto","Pratikno","Tito Karnavian","Retno Marsudi","Fachrul Razi","Yasonna Laoly","Sri Mulyani Indrawati","Nadiem Makarim","Terawan Agus Putranto","Juliari Batubara","Ida Fauziah","Agus Gumiwang Kartasasmita","Agus Suparmanto","Arifin Tasrif","Basuki Hadimuljono","Budi Karya","Johnny G. Plate","Syahrul Yasin Limpo","Siti Nurbaya Bakar","Edhy Prabowo","Abdul Halim Iskandar","Sofyan Djalil","Suharso Monoarfa","Tjahjo Kumolo","Erick Thohir","Teten Masduki","Wishnutama","Gusti Ayu Darmavati","Bambang Brodjonegoro","Zainudin Amali"]
 
-timeframe = '2019-10-21 2019-10-24'
+timeframe = 'now 7-d'
 
-individualSearch(keywords, timeframe)
+geo = 'ID'
+
+multipleSearch(keywords, timeframe, geo)
 
 print("Elapsed Time :", time.time() - t, "sec")
